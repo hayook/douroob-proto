@@ -1,89 +1,153 @@
+/* Reset & Base */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
 body {
     background-color: #121212;
     color: #e0e0e0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    padding: 2rem;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     line-height: 1.5;
+}
+
+/* Layout Containers */
+header {
+    background-color: #1a1a1a;
+    border-bottom: 1px solid #333;
+    padding: 0.75rem 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.nav-container {
+    max-width: 1200px;
+    margin: 0 auto;
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
+    align-items: center;
 }
 
-#app {
-    width: 100%;
-    max-width: 400px;
+.main-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr 320px;
+    gap: 2rem;
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
 }
 
-h1, h3 {
-    color: #ffffff;
-    text-align: center;
+/* Common Card Style */
+.card {
+    background-color: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
 }
 
-.form-group {
-    margin-bottom: 1rem;
+h3 { margin-bottom: 1rem; color: #fff; }
+
+/* Components */
+.sidebar-left { position: sticky; top: 5rem; height: fit-content; }
+.sidebar-right { position: sticky; top: 5rem; height: fit-content; }
+
+.profile-summary { text-align: center; }
+.profile-summary strong { display: block; font-size: 1.2rem; margin-top: 0.5rem; }
+.profile-summary small { color: #3b82f6; }
+
+.feed-placeholder {
     display: flex;
     flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+    color: #666;
+    border: 2px dashed #333;
+    border-radius: 12px;
 }
+
+.user-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #222;
+}
+
+.user-item:last-child { border-bottom: none; }
+
+.avatar-placeholder {
+    width: 40px;
+    height: 40px;
+    background: #333;
+    border-radius: 50%;
+}
+
+/* Forms (Auth) */
+.auth-wrapper {
+    max-width: 400px;
+    margin: 100px auto;
+}
+
+.form-group { margin-bottom: 1rem; display: flex; flex-direction: column; }
 
 input {
     background-color: #1e1e1e;
     color: #ffffff;
     border: 1px solid #333;
     padding: 0.75rem;
-    border-radius: 4px;
+    border-radius: 8px;
     font-size: 1rem;
-    margin-top: 0.5rem;
-}
-
-input:focus {
-    outline: none;
-    border-color: #3b82f6;
 }
 
 button {
     background-color: #3b82f6;
     color: white;
     border: none;
-    padding: 0.75rem;
-    border-radius: 4px;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
     cursor: pointer;
-    font-size: 1rem;
+    font-weight: 600;
+}
+
+button:hover { background-color: #2563eb; }
+
+#btn-logout { 
+    background-color: transparent; 
+    border: 1px solid #ef4444; 
+    color: #ef4444; 
     margin-top: 1rem;
     width: 100%;
 }
-
-button:hover {
-    background-color: #2563eb;
-}
+#btn-logout:hover { background-color: #ef4444; color: #fff; }
 
 .toggle-link {
     color: #3b82f6;
-    text-decoration: underline;
     cursor: pointer;
     display: block;
     text-align: center;
     margin-top: 1rem;
+    font-size: 0.9rem;
 }
 
 #output {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    max-width: 300px;
     background: #1e1e1e;
-    padding: 1rem;
-    border-radius: 4px;
-    margin-top: 1.5rem;
     border: 1px solid #333;
-    font-family: monospace;
-    font-size: 0.85rem;
-    white-space: pre-wrap;
-    word-break: break-all;
+    padding: 1rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
 }
 
-#user-info {
-    text-align: center;
+/* Responsive */
+@media (max-width: 1000px) {
+    .main-layout { grid-template-columns: 1fr 300px; }
+    .sidebar-left { display: none; }
 }
 
-#btn-logout {
-    background-color: #ef4444;
-}
-
-#btn-logout:hover {
-    background-color: #dc2626;
+@media (max-width: 700px) {
+    .main-layout { grid-template-columns: 1fr; }
+    .sidebar-right { display: none; }
 }
