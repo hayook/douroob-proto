@@ -37,3 +37,26 @@ alter table profiles
     create trigger on_auth_user_created
       after insert on auth.users
       for each row execute procedure public.handle_new_user();
+
+
+-- Create the posts table
+     create table public.posts (
+       id uuid default gen_random_uuid() primary key,
+       created_at timestamp with time zone default now() not null,
+       content text not null check (char_length(content) > 0),
+       user_id uuid references public.profiles(id) on delete cascade not null
+     );
+    
+ -- Enable Row Level Security (RLS)
+    alter table public.posts enable row level security;
+   
+    -- Policy: Anyone can see any post
+    create policy "Posts are viewable by everyone"
+    on public.posts for select
+    using (true);
+   
+    -- Policy: Only authenticated users can create posts (as themselves)
+    create policy "Users can create their own posts"
+    on public.posts for insert
+    with check (auth.uid() = user_id);
+

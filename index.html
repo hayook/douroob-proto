@@ -20,29 +20,17 @@
         <!-- Auth Views -->
         <div id="auth-views" class="auth-wrapper">
             <h1 style="text-align: center; margin-bottom: 2rem;">Douroob Social</h1>
-            
-            <!-- Login -->
             <div id="login-view" class="card">
                 <h3>Login</h3>
-                <div class="form-group">
-                    <input type="email" id="login-email" placeholder="Email">
-                </div>
-                <div class="form-group">
-                    <input type="password" id="login-password" placeholder="Password">
-                </div>
+                <div class="form-group"><input type="email" id="login-email" placeholder="Email"></div>
+                <div class="form-group"><input type="password" id="login-password" placeholder="Password"></div>
                 <button id="btn-login-submit" style="width: 100%;">Sign In</button>
                 <span class="toggle-link" id="go-to-register">New here? Create an account</span>
             </div>
-
-            <!-- Register -->
             <div id="register-view" class="card" style="display: none;">
                 <h3>Register</h3>
-                <div class="form-group">
-                    <input type="email" id="register-email" placeholder="Email">
-                </div>
-                <div class="form-group">
-                    <input type="password" id="register-password" placeholder="Password">
-                </div>
+                <div class="form-group"><input type="email" id="register-email" placeholder="Email"></div>
+                <div class="form-group"><input type="password" id="register-password" placeholder="Password"></div>
                 <button id="btn-register-submit" style="width: 100%;">Join Douroob</button>
                 <span class="toggle-link" id="go-to-login">Already have an account? Login</span>
             </div>
@@ -50,8 +38,7 @@
 
         <!-- Home Page View -->
         <div id="user-info" class="main-layout" style="display: none;">
-            
-            <!-- Left Sidebar: Profile -->
+            <!-- Left Sidebar -->
             <aside class="sidebar-left">
                 <div class="card profile-summary">
                     <div class="avatar-placeholder" style="width: 80px; height: 80px; margin: 0 auto 1rem;"></div>
@@ -59,25 +46,23 @@
                     <small id="profile-username">...</small>
                     <button id="btn-logout">Sign Out</button>
                 </div>
-                <div class="card">
-                    <p style="color: #666; font-size: 0.9rem;">Home</p>
-                    <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">Explore</p>
-                    <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">Notifications</p>
-                </div>
             </aside>
 
-            <!-- Center: Feed -->
+            <!-- Center: Feed & Posting -->
             <main class="feed-view">
-                <div class="card">
-                    <h3>Home Feed</h3>
-                    <div class="feed-placeholder">
-                        <p>Your feed is empty.</p>
-                        <small>Follow some users to see their posts here.</small>
+                <div class="card post-composer">
+                    <textarea id="post-content" rows="3" placeholder="What's on your mind?"></textarea>
+                    <div style="text-align: right;">
+                        <button id="btn-post-submit">Post</button>
                     </div>
+                </div>
+
+                <div id="feed-container">
+                    <p style="text-align: center; color: #666;">Loading your feed...</p>
                 </div>
             </main>
 
-            <!-- Right Sidebar: Discovery -->
+            <!-- Right Sidebar -->
             <aside class="sidebar-right">
                 <div class="card">
                     <h3>Who to follow</h3>
@@ -86,7 +71,6 @@
                     </div>
                 </div>
             </aside>
-
         </div>
 
         <!-- Global Toast/Output -->
