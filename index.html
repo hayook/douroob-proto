@@ -3,26 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Supabase Test Client</title>
+    <title>Supabase Social Clone</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Supabase SDK from CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <div id="app">
-        <h1>Supabase Social Clone</h1>
-        <p id="status">Initializing...</p>
+        <h1>Douroob Social</h1>
+        <p id="status" style="text-align: center; color: #888; margin-bottom: 2rem;">Please log in</p>
 
         <div id="auth-container">
-            <div id="login-form">
-                <h3>Login / Register</h3>
-                <input type="email" id="email" placeholder="Email">
-                <input type="password" id="password" placeholder="Password">
-                <button id="btn-login">Login</button>
-                <button id="btn-signup">Sign Up</button>
+            <!-- Login View -->
+            <div id="login-view">
+                <h3>Login</h3>
+                <div class="form-group">
+                    <input type="email" id="login-email" placeholder="Email" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <input type="password" id="login-password" placeholder="Password" autocomplete="current-password">
+                </div>
+                <button id="btn-login-submit">Sign In</button>
+                <span class="toggle-link" id="go-to-register">Don't have an account? Register</span>
             </div>
+
+            <!-- Register View (Hidden by default) -->
+            <div id="register-view" style="display: none;">
+                <h3>Create Account</h3>
+                <div class="form-group">
+                    <input type="email" id="register-email" placeholder="Email" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <input type="password" id="register-password" placeholder="Password" autocomplete="new-password">
+                </div>
+                <button id="btn-register-submit">Register</button>
+                <span class="toggle-link" id="go-to-login">Already have an account? Login</span>
+            </div>
+
+            <!-- User Profile View (Shown when logged in) -->
             <div id="user-info" style="display: none;">
-                <p>Logged in as: <span id="user-email"></span></p>
+                <p>Logged in as: <strong id="user-email"></strong></p>
                 <button id="btn-logout">Logout</button>
             </div>
         </div>

@@ -7,75 +7,101 @@ const SUPABASE_KEY = 'sb_publishable_DRslmDUWe88N7VToYOTDWA_rdLhZWzt';
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 document.addEventListener('DOMContentLoaded', () => {
-    const status = document.getElementById('status');
-    const output = document.getElementById('output');
-    const loginForm = document.getElementById('login-form');
-    const userInfo = document.getElementById('user-info');
+    // Containers
+    const loginView = document.getElementById('login-view');
+    const registerView = document.getElementById('register-view');
+    const userInfoView = document.getElementById('user-info');
+    
+    // Status and Output
+    const statusText = document.getElementById('status');
+    const outputText = document.getElementById('output');
     const userEmailSpan = document.getElementById('user-email');
 
-    // UI elements
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    const btnLogin = document.getElementById('btn-login');
-    const btnSignup = document.getElementById('btn-signup');
+    // Navigation Toggle Links
+    const goToRegister = document.getElementById('go-to-register');
+    const goToLogin = document.getElementById('go-to-login');
+
+    // Form Submissions
+    const btnLoginSubmit = document.getElementById('btn-login-submit');
+    const btnRegisterSubmit = document.getElementById('btn-register-submit');
     const btnLogout = document.getElementById('btn-logout');
 
-    // Update UI based on session
-    const updateUI = (session) => {
+    // UI State Management
+    const showView = (viewName) => {
+        loginView.style.display = viewName === 'login' ? 'block' : 'none';
+        registerView.style.display = viewName === 'register' ? 'block' : 'none';
+        userInfoView.style.display = viewName === 'profile' ? 'block' : 'none';
+        
+        // Hide output when switching views
+        outputText.textContent = '';
+    };
+
+    const updateAuthUI = (session) => {
         if (session) {
-            loginForm.style.display = 'none';
-            userInfo.style.display = 'block';
+            showView('profile');
             userEmailSpan.textContent = session.user.email;
-            status.textContent = 'Authenticated';
+            statusText.textContent = 'Welcome back!';
         } else {
-            loginForm.style.display = 'block';
-            userInfo.style.display = 'none';
-            userEmailSpan.textContent = '';
-            status.textContent = 'Please log in';
+            showView('login');
+            statusText.textContent = 'Please log in';
         }
     };
+
+    // View Switching
+    goToRegister.addEventListener('click', () => showView('register'));
+    goToLogin.addEventListener('click', () => showView('login'));
 
     // Listen for auth state changes
     _supabase.auth.onAuthStateChange((event, session) => {
         console.log('Auth state changed:', event, session);
-        updateUI(session);
+        updateAuthUI(session);
     });
 
-    // Sign Up
-    btnSignup.addEventListener('click', async () => {
-        const email = emailInput.value;
-        const password = passwordInput.value;
+    // Handle Register
+    btnRegisterSubmit.addEventListener('click', async () => {
+        const email = document.getElementById('register-email').value;
+        const password = document.getElementById('register-password').value;
         
+        if (!email || !password) {
+            outputText.textContent = 'Email and password are required.';
+            return;
+        }
+
         const { data, error } = await _supabase.auth.signUp({ email, password });
         
         if (error) {
-            output.textContent = 'Signup Error: ' + error.message;
+            outputText.textContent = 'Signup Error: ' + error.message;
         } else {
-            output.textContent = 'Signup Successful! Check your email for verification.';
+            outputText.textContent = 'Success! Check your email for verification.';
         }
     });
 
-    // Sign In
-    btnLogin.addEventListener('click', async () => {
-        const email = emailInput.value;
-        const password = passwordInput.value;
+    // Handle Login
+    btnLoginSubmit.addEventListener('click', async () => {
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
         
+        if (!email || !password) {
+            outputText.textContent = 'Email and password are required.';
+            return;
+        }
+
         const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
         
         if (error) {
-            output.textContent = 'Login Error: ' + error.message;
+            outputText.textContent = 'Login Error: ' + error.message;
         } else {
-            output.textContent = 'Logged in successfully!';
+            outputText.textContent = 'Logged in successfully!';
         }
     });
 
-    // Sign Out
+    // Handle Logout
     btnLogout.addEventListener('click', async () => {
         const { error } = await _supabase.auth.signOut();
         if (error) {
-            output.textContent = 'Logout Error: ' + error.message;
+            outputText.textContent = 'Logout Error: ' + error.message;
         } else {
-            output.textContent = 'Logged out.';
+            outputText.textContent = 'Logged out.';
         }
     });
 });
