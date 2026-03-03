@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Test Client</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Supabase SDK from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div id="app">
+        <h1>Supabase Social Clone</h1>
+        <p id="status">Initializing...</p>
+
+        <div id="auth-container">
+            <div id="login-form">
+                <h3>Login / Register</h3>
+                <input type="email" id="email" placeholder="Email">
+                <input type="password" id="password" placeholder="Password">
+                <button id="btn-login">Login</button>
+                <button id="btn-signup">Sign Up</button>
+            </div>
+            <div id="user-info" style="display: none;">
+                <p>Logged in as: <span id="user-email"></span></p>
+                <button id="btn-logout">Logout</button>
+            </div>
+        </div>
+
+        <div id="output"></div>
+    </div>
+    <script src="main.js" type="module"></script>
+</body>
+</html>
