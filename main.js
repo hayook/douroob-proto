@@ -3,30 +3,31 @@
 const SUPABASE_URL = 'https://csopcjxlibyruzgsftbl.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_DRslmDUWe88N7VToYOTDWA_rdLhZWzt';
 
-// Initialize the Supabase client
 const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-document.addEventListener('DOMContentLoaded', () => {
-    // Top-level containers
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. UI Element Selectors
     const authViews = document.getElementById('auth-views');
     const appHeader = document.getElementById('app-header');
     const mainView = document.getElementById('user-info');
+    const loginView = document.getElementById('login-view');
+    const registerView = document.getElementById('register-view');
     
-    // UI Elements
     const profileName = document.getElementById('profile-name');
     const profileUsername = document.getElementById('profile-username');
     const profilesList = document.getElementById('profiles-list');
     const feedContainer = document.getElementById('feed-container');
     const postContent = document.getElementById('post-content');
+    
     const statusText = document.getElementById('status');
     const outputText = document.getElementById('output');
 
-    // Buttons
     const btnLoginSubmit = document.getElementById('btn-login-submit');
     const btnRegisterSubmit = document.getElementById('btn-register-submit');
     const btnPostSubmit = document.getElementById('btn-post-submit');
     const btnLogout = document.getElementById('btn-logout');
 
+    // 2. Helper Functions
     const showView = (viewName) => {
         if (viewName === 'profile') {
             authViews.style.display = 'none';
@@ -36,8 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
             authViews.style.display = 'block';
             appHeader.style.display = 'none';
             mainView.style.display = 'none';
-            document.getElementById('login-view').style.display = viewName === 'login' ? 'block' : 'none';
-            document.getElementById('register-view').style.display = viewName === 'register' ? 'block' : 'none';
+            loginView.style.display = viewName === 'login' ? 'block' : 'none';
+            registerView.style.display = viewName === 'register' ? 'block' : 'none';
         }
     };
 
@@ -45,73 +46,89 @@ document.addEventListener('DOMContentLoaded', () => {
         outputText.textContent = message;
         outputText.style.display = 'block';
         outputText.style.borderColor = isError ? '#ef4444' : '#3b82f6';
-        setTimeout(() => { outputText.style.display = 'none'; }, 4000);
+        outputText.style.color = isError ? '#ef4444' : '#e0e0e0';
+        console.log(isError ? 'Error:' : 'Info:', message);
+        setTimeout(() => { outputText.style.display = 'none'; }, 5000);
     };
 
-    // --- Feed Functions ---
-
+    // 3. Data Fetching Functions
     const loadFeed = async () => {
-        const { data, error } = await _supabase
-            .from('posts')
-            .select(`
-                id, content, created_at, 
-                profiles (username, full_name)
-            `)
-            .order('created_at', { ascending: false });
+        try {
+            feedContainer.innerHTML = '<p style="text-align: center; color: #666;">Refreshing feed...</p>';
+            
+            const { data, error } = await _supabase
+                .from('posts')
+                .select(`
+                    id, content, created_at, 
+                    profiles (username, full_name)
+                `)
+                .order('created_at', { ascending: false });
 
-        if (error) {
-            feedContainer.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
-            return;
-        }
+            if (error) throw error;
 
-        if (data.length === 0) {
-            feedContainer.innerHTML = '<p style="text-align: center; color: #666; margin-top: 2rem;">No posts yet. Be the first!</p>';
-            return;
-        }
+            if (!data || data.length === 0) {
+                feedContainer.innerHTML = '<p style="text-align: center; color: #666; margin-top: 2rem;">No posts yet. Be the first!</p>';
+                return;
+            }
 
-        feedContainer.innerHTML = data.map(post => `
-            <div class="post-card">
-                <div class="post-header">
-                    <div class="avatar-placeholder"></div>
-                    <div>
-                        <strong>${post.profiles.full_name}</strong>
-                        <small style="color: #3b82f6; display: block;">@${post.profiles.username}</small>
+            feedContainer.innerHTML = data.map(post => `
+                <div class="post-card">
+                    <div class="post-header">
+                        <div class="avatar-placeholder"></div>
+                        <div>
+                            <strong>${post.profiles?.full_name || 'Unknown User'}</strong>
+                            <small style="color: #3b82f6; display: block;">@${post.profiles?.username || 'unknown'}</small>
+                        </div>
                     </div>
+                    <div class="post-content">${post.content}</div>
+                    <div class="post-meta">${new Date(post.created_at).toLocaleString()}</div>
                 </div>
-                <div class="post-content">${post.content}</div>
-                <div class="post-meta">${new Date(post.created_at).toLocaleString()}</div>
-            </div>
-        `).join('');
+            `).join('');
+        } catch (err) {
+            console.error('Feed Error:', err);
+            feedContainer.innerHTML = `<p style="color: #ef4444; text-align: center;">Failed to load feed: ${err.message}</p>`;
+        }
     };
 
     const loadDiscovery = async (currentUserId) => {
-        const { data } = await _supabase.from('profiles').select('id, username, full_name').neq('id', currentUserId).limit(5);
-        if (data) {
-            profilesList.innerHTML = data.map(p => `
-                <div class="user-item">
-                    <div class="avatar-placeholder"></div>
-                    <div style="flex: 1;">
-                        <p style="font-weight: 600; font-size: 0.9rem;">${p.full_name}</p>
-                        <small style="color: #3b82f6;">@${p.username}</small>
-                    </div>
-                    <button style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: transparent; border: 1px solid #3b82f6; color: #3b82f6;">Follow</button>
+        const { data, error } = await _supabase
+            .from('profiles')
+            .select('id, username, full_name')
+            .neq('id', currentUserId)
+            .limit(5);
+        
+        if (error) return console.error('Discovery Error:', error);
+
+        profilesList.innerHTML = (data || []).map(p => `
+            <div class="user-item">
+                <div class="avatar-placeholder"></div>
+                <div style="flex: 1;">
+                    <p style="font-weight: 600; font-size: 0.9rem;">${p.full_name}</p>
+                    <small style="color: #3b82f6;">@${p.username}</small>
                 </div>
-            `).join('');
-        }
+                <button style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: transparent; border: 1px solid #3b82f6; color: #3b82f6;">Follow</button>
+            </div>
+        `).join('') || '<p style="color: #666; font-size: 0.8rem;">No other users found.</p>';
     };
 
-    // --- Auth Logic ---
-
+    // 4. Auth Management
     const updateAuthUI = async (session) => {
-        if (session) {
+        if (session?.user) {
             showView('profile');
             statusText.textContent = `Signed in as: ${session.user.email}`;
 
-            // Fetch profile
-            const { data: profile } = await _supabase.from('profiles').select('username, full_name').eq('id', session.user.id).single();
+            // Get profile details
+            const { data: profile, error } = await _supabase
+                .from('profiles')
+                .select('username, full_name')
+                .eq('id', session.user.id)
+                .single();
+
             if (profile) {
                 profileName.textContent = profile.full_name;
                 profileUsername.textContent = '@' + profile.username;
+            } else if (error) {
+                console.error('Profile fetch error:', error);
             }
 
             loadFeed();
@@ -121,17 +138,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    _supabase.auth.onAuthStateChange((event, session) => updateAuthUI(session));
-
-    // --- Interaction Logic ---
-
+    // 5. Attach Event Listeners FIRST
     btnPostSubmit.addEventListener('click', async () => {
         const content = postContent.value.trim();
         if (!content) return showToast('Post cannot be empty', true);
 
-        const { data: { user } } = await _supabase.auth.getUser();
+        const { data: { session } } = await _supabase.auth.getSession();
+        if (!session) return showToast('Session expired. Please log in again.', true);
+
         const { error } = await _supabase.from('posts').insert([
-            { content, user_id: user.id }
+            { content, user_id: session.user.id }
         ]);
 
         if (error) {
@@ -139,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             postContent.value = '';
             showToast('Post shared!');
-            loadFeed(); // Refresh feed
+            loadFeed();
         }
     });
 
@@ -161,8 +177,19 @@ document.addEventListener('DOMContentLoaded', () => {
         else showToast('Registration successful! Login now.');
     });
 
-    btnLogout.addEventListener('click', () => _supabase.auth.signOut());
+    btnLogout.addEventListener('click', async () => {
+        await _supabase.auth.signOut();
+    });
 
     document.getElementById('go-to-register').addEventListener('click', () => showView('register'));
     document.getElementById('go-to-login').addEventListener('click', () => showView('login'));
+
+    // 6. Initialize Auth State
+    _supabase.auth.onAuthStateChange((_event, session) => {
+        updateAuthUI(session);
+    });
+
+    // Final manual check to ensure UI reflects current session on load
+    const { data: { session } } = await _supabase.auth.getSession();
+    updateAuthUI(session);
 });
