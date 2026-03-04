@@ -91,3 +91,53 @@ alter table profiles
     on public.likes for delete
     using (auth.uid() = user_id);
 
+
+
+ -- Create notifications table
+     create table public.notifications (
+       id uuid default gen_random_uuid() primary key,
+       created_at timestamp with time zone default now() not null,
+       user_id uuid references public.profiles(id) on delete cascade not null, -- The receiver (post owner)
+       actor_id uuid references public.profiles(id) on delete cascade not null, -- The person who liked
+       post_id uuid references public.posts(id) on delete cascade not null,    -- The post liked
+       type text not null, -- e.g., 'like'
+       is_read boolean default false
+    );
+   
+    -- Enable Row Level Security
+    alter table public.notifications enable row level security;
+
+ -- Policy: Users can only see their own notifications
+    create policy "Users can view their own notifications"
+    on public.notifications for select
+    using (auth.uid() = user_id);
+   
+    -- Policy: Users can update their own notifications (to mark as read)
+    create policy "Users can update their own notifications"
+    on public.notifications for update
+    using (auth.uid() = user_id);
+
+ -- Function to handle like notifications
+     create or replace function public.handle_like_notification()
+     returns trigger as $$
+     declare
+       post_owner_id uuid;
+     begin
+       -- Find the owner of the post that was liked
+       select user_id into post_owner_id from public.posts where id = new.post_id;
+    
+      -- Only create notification if the liker is NOT the post owner
+      if post_owner_id != new.user_id then
+        insert into public.notifications (user_id, actor_id, post_id, type)
+        values (post_owner_id, new.user_id, new.post_id, 'like');
+      end if;
+   
+      return new;
+    end;
+    $$ language plpgsql security definer;
+   
+    -- Trigger the function after a like is inserted
+    create trigger on_like_created
+      after insert on public.likes
+      for each row execute procedure public.handle_like_notification();
+

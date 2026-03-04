@@ -50,6 +50,94 @@ document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(() => { outputText.style.display = 'none'; }, 5000);
     };
 
+    // --- Notification Logic ---
+    const showNotificationCard = (message) => {
+        const container = document.getElementById('notification-container');
+        const card = document.createElement('div');
+        card.style.cssText = `
+            background: #1e1e1e;
+            color: #fff;
+            border-left: 4px solid #3b82f6;
+            border-top: 1px solid #333;
+            border-bottom: 1px solid #333;
+            border-right: 1px solid #333;
+            padding: 16px 24px;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+            min-width: 280px;
+            pointer-events: auto;
+            transform: translateX(-120%);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        `;
+        
+        card.innerHTML = `
+            <div style="font-size: 1.5rem;">❤️</div>
+            <div style="flex: 1;">
+                <div style="font-weight: 700; color: #fff;">Notification</div>
+                <div style="font-size: 0.9rem; color: #888; margin-top: 2px;">${message}</div>
+            </div>
+        `;
+        
+        container.appendChild(card);
+        
+        // Trigger animation
+        setTimeout(() => {
+            card.style.transform = 'translateX(0)';
+            card.style.opacity = '1';
+        }, 10);
+
+        // Remove after 5 seconds
+        setTimeout(() => {
+            card.style.transform = 'translateX(-120%)';
+            card.style.opacity = '0';
+            setTimeout(() => card.remove(), 500);
+        }, 5000);
+    };
+
+    const setupNotifications = (userId) => {
+        console.log('--- Notification Setup ---');
+        console.log('Listening for user_id:', userId);
+
+        const channel = _supabase
+            .channel(`notifications-${userId}`)
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'notifications',
+                    filter: `user_id=eq.${userId}`
+                },
+                async (payload) => {
+                    console.log('Realtime Payload Received:', payload);
+                    
+                    // Fetch the name of the user who liked
+                    const { data: actor } = await _supabase
+                        .from('profiles')
+                        .select('full_name')
+                        .eq('id', payload.new.actor_id)
+                        .single();
+                    
+                    const name = actor?.full_name || 'Someone';
+                    showNotificationCard(`${name} liked your post!`);
+                }
+            )
+            .subscribe((status, err) => {
+                console.log('Subscription Status:', status);
+                if (err) console.error('Subscription Error:', err);
+                
+                if (status === 'CHANNEL_ERROR') {
+                    console.error('Check if Realtime is enabled for "notifications" table in Supabase Dashboard.');
+                }
+            });
+
+        return channel;
+    };
+
     // --- Like Logic ---
     const toggleLike = async (postId, currentUserId, isLiked) => {
         try {
@@ -147,6 +235,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // 4. Auth Management
+    let notificationSetupDone = false;
     const updateAuthUI = async (session) => {
         if (session?.user) {
             showView('profile');
@@ -165,8 +254,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             loadFeed();
             loadDiscovery(session.user.id);
+            
+            if (!notificationSetupDone) {
+                setupNotifications(session.user.id);
+                notificationSetupDone = true;
+            }
         } else {
             showView('login');
+            notificationSetupDone = false;
         }
     };
 
