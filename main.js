@@ -47,20 +47,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         outputText.style.display = 'block';
         outputText.style.borderColor = isError ? '#ef4444' : '#3b82f6';
         outputText.style.color = isError ? '#ef4444' : '#e0e0e0';
-        console.log(isError ? 'Error:' : 'Info:', message);
         setTimeout(() => { outputText.style.display = 'none'; }, 5000);
+    };
+
+    // --- Like Logic ---
+    const toggleLike = async (postId, currentUserId, isLiked) => {
+        try {
+            if (isLiked) {
+                await _supabase.from('likes').delete().eq('post_id', postId).eq('user_id', currentUserId);
+            } else {
+                await _supabase.from('likes').insert([{ post_id: postId, user_id: currentUserId }]);
+            }
+            loadFeed();
+        } catch (err) {
+            console.error('Like Error:', err);
+        }
     };
 
     // 3. Data Fetching Functions
     const loadFeed = async () => {
         try {
-            feedContainer.innerHTML = '<p style="text-align: center; color: #666;">Refreshing feed...</p>';
-            
+            const { data: { session } } = await _supabase.auth.getSession();
+            const currentUserId = session?.user?.id;
+
             const { data, error } = await _supabase
                 .from('posts')
                 .select(`
                     id, content, created_at, 
-                    profiles (username, full_name)
+                    profiles (username, full_name),
+                    likes (user_id)
                 `)
                 .order('created_at', { ascending: false });
 
@@ -71,8 +86,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            feedContainer.innerHTML = data.map(post => `
-                <div class="post-card">
+            // Using the efficient innerHTML assignment with event delegation or direct insertion
+            feedContainer.innerHTML = '';
+            data.forEach(post => {
+                const likes = post.likes || [];
+                const isLikedByMe = currentUserId ? likes.some(l => l.user_id === currentUserId) : false;
+                
+                const card = document.createElement('div');
+                card.className = 'post-card';
+                card.innerHTML = `
                     <div class="post-header">
                         <div class="avatar-placeholder"></div>
                         <div>
@@ -81,9 +103,22 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                     </div>
                     <div class="post-content">${post.content}</div>
-                    <div class="post-meta">${new Date(post.created_at).toLocaleString()}</div>
-                </div>
-            `).join('');
+                    <div class="post-meta">
+                        <span>${new Date(post.created_at).toLocaleString()}</span>
+                        <button class="like-button ${isLikedByMe ? 'active' : ''}">
+                            ${isLikedByMe ? '❤️' : '🤍'} ${likes.length}
+                        </button>
+                    </div>
+                `;
+
+                const likeBtn = card.querySelector('.like-button');
+                likeBtn.addEventListener('click', () => {
+                    if (!currentUserId) return showToast('Please log in to like posts', true);
+                    toggleLike(post.id, currentUserId, isLikedByMe);
+                });
+
+                feedContainer.appendChild(card);
+            });
         } catch (err) {
             console.error('Feed Error:', err);
             feedContainer.innerHTML = `<p style="color: #ef4444; text-align: center;">Failed to load feed: ${err.message}</p>`;
@@ -117,8 +152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             showView('profile');
             statusText.textContent = `Signed in as: ${session.user.email}`;
 
-            // Get profile details
-            const { data: profile, error } = await _supabase
+            const { data: profile } = await _supabase
                 .from('profiles')
                 .select('username, full_name')
                 .eq('id', session.user.id)
@@ -127,8 +161,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (profile) {
                 profileName.textContent = profile.full_name;
                 profileUsername.textContent = '@' + profile.username;
-            } else if (error) {
-                console.error('Profile fetch error:', error);
             }
 
             loadFeed();
@@ -138,7 +170,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
-    // 5. Attach Event Listeners FIRST
+    // 5. Attach Event Listeners
     btnPostSubmit.addEventListener('click', async () => {
         const content = postContent.value.trim();
         if (!content) return showToast('Post cannot be empty', true);
@@ -146,13 +178,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const { data: { session } } = await _supabase.auth.getSession();
         if (!session) return showToast('Session expired. Please log in again.', true);
 
-        const { error } = await _supabase.from('posts').insert([
-            { content, user_id: session.user.id }
-        ]);
+        const { error } = await _supabase.from('posts').insert([{ content, user_id: session.user.id }]);
 
-        if (error) {
-            showToast(error.message, true);
-        } else {
+        if (error) showToast(error.message, true);
+        else {
             postContent.value = '';
             showToast('Post shared!');
             loadFeed();
@@ -189,7 +218,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateAuthUI(session);
     });
 
-    // Final manual check to ensure UI reflects current session on load
     const { data: { session } } = await _supabase.auth.getSession();
     updateAuthUI(session);
 });

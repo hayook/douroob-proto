@@ -60,3 +60,34 @@ alter table profiles
     on public.posts for insert
     with check (auth.uid() = user_id);
 
+
+
+ -- Create the likes table
+     create table public.likes (
+       id uuid default gen_random_uuid() primary key,
+       created_at timestamp with time zone default now() not null,
+       post_id uuid references public.posts(id) on delete cascade not null,
+       user_id uuid references public.profiles(id) on delete cascade not null,
+    
+       -- Prevent a user from liking the same post more than once
+       unique (post_id, user_id)
+    );
+   
+    -- Enable Row Level Security (RLS)
+    alter table public.likes enable row level security;
+   
+    -- Policy: Anyone can see likes (needed to count them)
+    create policy "Likes are viewable by everyone"
+    on public.likes for select
+    using (true);
+
+ -- Policy: Only authenticated users can like a post
+    create policy "Users can like posts"
+    on public.likes for insert
+    with check (auth.uid() = user_id);
+   
+    -- Policy: Only the user who liked a post can remove their like
+    create policy "Users can unlike posts"
+    on public.likes for delete
+    using (auth.uid() = user_id);
+
