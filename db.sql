@@ -141,3 +141,51 @@ alter table profiles
       after insert on public.likes
       for each row execute procedure public.handle_like_notification();
 
+
+ -- Create follows table
+     create table public.follows (
+       id uuid default gen_random_uuid() primary key,
+       created_at timestamp with time zone default now() not null,
+       follower_id uuid references public.profiles(id) on delete cascade not null, -- The person who is following
+       following_id uuid references public.profiles(id) on delete cascade not null, -- The person being followed
+    
+       -- Prevent following the same person twice
+       unique (follower_id, following_id),
+      -- Prevent following yourself
+      constraint cannot_follow_self check (follower_id != following_id)
+    );
+
+ -- Enable Row Level Security
+   alter table public.follows enable row level security;
+   
+   -- Policy: Anyone can see who follows whom
+   create policy "Follows are viewable by everyone"
+   on public.follows for select
+   using (true);
+   
+   -- Policy: Only authenticated users can follow others
+   create policy "Users can follow others"
+   on public.follows for insert
+   with check (auth.uid() = follower_id);
+   
+   -- Policy: Only the follower can unfollow
+   create policy "Users can unfollow"
+   on public.follows for delete
+   using (auth.uid() = follower_id);
+
+
+ -- Create a trigger function for follow notifications
+     create or replace function public.handle_follow_notification()
+     returns trigger as $$
+     begin
+       insert into public.notifications (user_id, actor_id, type)
+       values (new.following_id, new.follower_id, 'follow');
+       return new;
+     end;
+     $$ language plpgsql security definer;
+   
+    -- Trigger for follows
+    create trigger on_follow_created
+      after insert on public.follows
+      for each row execute procedure public.handle_follow_notification();
+alter table public.notifications alter column post_id drop not null;

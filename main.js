@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
         
         card.innerHTML = `
-            <div style="font-size: 1.5rem;">❤️</div>
+            <div style="font-size: 1.5rem;">🔔</div>
             <div style="flex: 1;">
                 <div style="font-weight: 700; color: #fff;">Notification</div>
                 <div style="font-size: 0.9rem; color: #888; margin-top: 2px;">${message}</div>
@@ -83,14 +83,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
         
         container.appendChild(card);
-        
-        // Trigger animation
         setTimeout(() => {
             card.style.transform = 'translateX(0)';
             card.style.opacity = '1';
         }, 10);
 
-        // Remove after 5 seconds
         setTimeout(() => {
             card.style.transform = 'translateX(-120%)';
             card.style.opacity = '0';
@@ -99,10 +96,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     const setupNotifications = (userId) => {
-        console.log('--- Notification Setup ---');
-        console.log('Listening for user_id:', userId);
-
-        const channel = _supabase
+        _supabase
             .channel(`notifications-${userId}`)
             .on(
                 'postgres_changes',
@@ -113,9 +107,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     filter: `user_id=eq.${userId}`
                 },
                 async (payload) => {
-                    console.log('Realtime Payload Received:', payload);
-                    
-                    // Fetch the name of the user who liked
                     const { data: actor } = await _supabase
                         .from('profiles')
                         .select('full_name')
@@ -123,19 +114,28 @@ document.addEventListener('DOMContentLoaded', async () => {
                         .single();
                     
                     const name = actor?.full_name || 'Someone';
-                    showNotificationCard(`${name} liked your post!`);
+                    if (payload.new.type === 'like') {
+                        showNotificationCard(`${name} liked your post!`);
+                    } else if (payload.new.type === 'follow') {
+                        showNotificationCard(`${name} started following you!`);
+                    }
                 }
             )
-            .subscribe((status, err) => {
-                console.log('Subscription Status:', status);
-                if (err) console.error('Subscription Error:', err);
-                
-                if (status === 'CHANNEL_ERROR') {
-                    console.error('Check if Realtime is enabled for "notifications" table in Supabase Dashboard.');
-                }
-            });
+            .subscribe();
+    };
 
-        return channel;
+    // --- Follow Logic ---
+    const toggleFollow = async (targetUserId, currentUserId, isFollowing) => {
+        try {
+            if (isFollowing) {
+                await _supabase.from('follows').delete().eq('follower_id', currentUserId).eq('following_id', targetUserId);
+            } else {
+                await _supabase.from('follows').insert([{ follower_id: currentUserId, following_id: targetUserId }]);
+            }
+            loadDiscovery(currentUserId);
+        } catch (err) {
+            console.error('Follow Error:', err);
+        }
     };
 
     // --- Like Logic ---
@@ -174,7 +174,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            // Using the efficient innerHTML assignment with event delegation or direct insertion
             feedContainer.innerHTML = '';
             data.forEach(post => {
                 const likes = post.likes || [];
@@ -214,24 +213,47 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     const loadDiscovery = async (currentUserId) => {
-        const { data, error } = await _supabase
-            .from('profiles')
-            .select('id, username, full_name')
-            .neq('id', currentUserId)
-            .limit(5);
-        
-        if (error) return console.error('Discovery Error:', error);
+        try {
+            // Fetch profiles and whether current user follows them
+            const { data: profiles, error } = await _supabase
+                .from('profiles')
+                .select(`
+                    id, username, full_name,
+                    follows:follows!following_id (follower_id)
+                `)
+                .neq('id', currentUserId)
+                .limit(5);
+            
+            if (error) throw error;
 
-        profilesList.innerHTML = (data || []).map(p => `
-            <div class="user-item">
-                <div class="avatar-placeholder"></div>
-                <div style="flex: 1;">
-                    <p style="font-weight: 600; font-size: 0.9rem;">${p.full_name}</p>
-                    <small style="color: #3b82f6;">@${p.username}</small>
-                </div>
-                <button style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: transparent; border: 1px solid #3b82f6; color: #3b82f6;">Follow</button>
-            </div>
-        `).join('') || '<p style="color: #666; font-size: 0.8rem;">No other users found.</p>';
+            profilesList.innerHTML = (profiles || []).map(p => {
+                const isFollowing = p.follows.some(f => f.follower_id === currentUserId);
+                return `
+                    <div class="user-item">
+                        <div class="avatar-placeholder"></div>
+                        <div style="flex: 1;">
+                            <p style="font-weight: 600; font-size: 0.9rem;">${p.full_name}</p>
+                            <small style="color: #3b82f6;">@${p.username}</small>
+                        </div>
+                        <button class="follow-btn" data-id="${p.id}" data-following="${isFollowing}" style="padding: 0.25rem 0.5rem; font-size: 0.7rem; background: ${isFollowing ? 'transparent' : '#3b82f6'}; border: 1px solid #3b82f6; color: ${isFollowing ? '#3b82f6' : 'white'};">
+                            ${isFollowing ? 'Unfollow' : 'Follow'}
+                        </button>
+                    </div>
+                `;
+            }).join('') || '<p style="color: #666; font-size: 0.8rem;">No other users found.</p>';
+
+            // Attach listeners to follow buttons
+            document.querySelectorAll('.follow-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const targetId = btn.dataset.id;
+                    const isFollowing = btn.dataset.following === 'true';
+                    toggleFollow(targetId, currentUserId, isFollowing);
+                });
+            });
+
+        } catch (err) {
+            console.error('Discovery Error:', err);
+        }
     };
 
     // 4. Auth Management
